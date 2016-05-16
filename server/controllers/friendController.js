@@ -6,7 +6,7 @@ const pgp = require('../db/database.js').pgp;
 exports.retrieveFriends = function(req, res) {
   var queryId = req.params.id;
   // select all the secondary users associated with this user
-  db.one(
+  db.any(
     'SELECT u.id, u.username, u.email ' + 
     'FROM users_users uu ' +
     'INNER JOIN users u ' +
@@ -16,7 +16,7 @@ exports.retrieveFriends = function(req, res) {
     queryId)
     // select all the primary users associated with this user
     .then(data1 => {
-      db.one(
+      db.any(
         'SELECT u.id, u.username, u.email ' + 
         'FROM users_users uu ' +
         'INNER JOIN users u ' +
@@ -50,8 +50,9 @@ exports.addFriend = function(req, res) {
   const secondaryUsername = req.body.secondaryUsername;
   const secondaryUserEmail = req.body.secondaryUserEmail;
   const primaryRepoId = req.body.primaryRepoId;
-  const competitionStart = pgp.as.date(new Date());
+  const competitionStart = pgp.as.date(new Date(req.body.competitionStart));
   const dbTimestamp = pgp.as.date(new Date());
+
   // check if the secondary user exists
   db.one('SELECT * FROM users WHERE id=($1)',
     secondaryUserId)
@@ -108,7 +109,6 @@ exports.confirmFriend = function(req, res) {
     'AND uu.secondary_user_id=($2)', 
     [primaryUserId, secondaryUserId])
     .then(data => {
-      console.log('DATA', data)
       if (data !== null) {
         db.oneOrNone(
           'UPDATE users_users ' + 
