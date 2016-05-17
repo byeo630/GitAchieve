@@ -1,6 +1,6 @@
 import configSettings from './../../server/config/config-settings';
 
-module.exports = {
+exports.utils = {
   debounce: function(func, wait, immediate) {
   var timeout;
   return function() {
