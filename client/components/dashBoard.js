@@ -2,37 +2,30 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
-import { browserHistory, Link } from 'react-router';
 import actions from './../actions/ActionCreators';
 import d3 from 'd3';
-import utils from './../utils/utils';
+import ghFetch from './../utils/utils';
 import { Repos, Search, CompetitorsMiniView, CumulativeChart, DailyChart, SentRequest, Request } from './index';
 
 
 class DashBoard extends Component {
   constructor(props) {
     super(props);
-    console.log('', this.props.competitorsData)
   }
 
   componentDidUpdate() {
     if (this.props.auth.authenticated && this.props.userContributions[0] === 0) {
       this.getUserContribs();
     }
-    if (this.props.competitorsData.length > 0){
-      console.log('We\'re making the CumulativeChart');
-      CumulativeChart(this.props.competitorsData);
-    }
   }
   getUserContribs() {
     async function getContribs() {
-      var numContribs = await utils.fetchLastYearGHContribs(this.props.user.username);
+      var numContribs = await ghFetch.utils.fetchLastYearGHContribs(this.props.user.username);
       this.props.actions.getUserContribs(numContribs);
     }
     getContribs.call(this);
   }
   makeMainChart() {
-      console.log('makeMainChart called');
     if (this.props.competitorsData.length > 0){
       CumulativeChart(this.props.competitorsData);
     }
@@ -48,26 +41,14 @@ class DashBoard extends Component {
     }
   }
 
-
-
-  // <button onClick={this.makeMainChart.bind(this)} className="button"> Tab 1: Total </button>
-  // <button onClick={this.makeDailyChart.bind(this)} className="button"> Tab 2: Daily </button>
-
-
   render() {
     const { actions } = this.props;
-
     if (this.props.auth.authenticated) {
-
-      // this.makeMainChart();
-
       return (
         <div className="dashboard">
           <div className="main-search">
             <div className="dash-header-text text-centered">
-              <h1 onClick={() => browserHistory.push('/')} className="logo">GitAchieve</h1>
               <h1 className="font-white">Search your Git opponent</h1>
-              <div className="spacer-5px" />
               <h3 className="font-white">Your contributions: {this.props.userContributions}</h3>
             </div>
             <div className="search-container text-centered">
@@ -81,6 +62,8 @@ class DashBoard extends Component {
           <div className="data-results-container-clear">
             <h2 className="font-white">Achievement Chart</h2>
             <div className="data-results-container full-width">
+              <button onClick={this.makeMainChart.bind(this)} className="button"> Tab 1: Total </button>
+              <button onClick={this.makeDailyChart.bind(this)} className="button"> Tab 2: Daily </button>
 
               <div id="commit-charts">
                 <svg width={540} height={300}>
@@ -103,6 +86,25 @@ class DashBoard extends Component {
     }
   }
 }
+
+/*
+// CHART //
+<button onClick={this.makeMainChart.bind(this)}> Tab 1: Total </button>
+<button onClick={this.makeDailyChart.bind(this)}> Tab 2: Daily </button>
+<div id="commit-charts">
+  <svg width={540} height={300}>
+  </svg>
+  <div id="optional-extra-chart">
+  </div>
+</div>
+<button onClick={this.addDailyChart.bind(this)}> See daily breakdown </button>
+// END CHART //
+<div id="commit-charts">
+  <svg width={540} height={300}>
+  </svg>
+</div>
+<div><Repos /></div>
+*/
 
 const mapStateToProps = state => {
   return state;

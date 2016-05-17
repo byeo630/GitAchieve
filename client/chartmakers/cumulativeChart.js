@@ -1,12 +1,15 @@
+//@TODO: decide what to do in case of a tie!
+// The obvious thing is to opacity-1/2 (or 1/4) 2 exactly overlapping rects
+
 module.exports = (data) => {
 
-  // get the right data in the right places
-  data = data[0];
-  var users = [ data[0][0], data[1][0] ];
-  var commits = [ data[0][1], data[1][1] ];
+  // EXAMPLE OF DATA COMING IN:
+  data = data[0] || [24, 12];
 
-  // get most commits for scaling
-  var mostCommits = Math.max(...commits);
+  var mostCommits = Math.max(...data);
+
+  // HARDCODED FOR NOW
+  var users = ['@adamrgisom', '@msmith9393'];
 
   // set dimensions
   var pad = 30;
@@ -21,7 +24,7 @@ module.exports = (data) => {
 
   // if there is NO recent activity, don't draw a graph
   // just write text saying 'no recent activity' in an ellipse (?)
-  if (commits.length === 0) {
+  if (data.length === 0) {
     svg.append('text')
       .text('no recent activity on this repo!')
       .attr('x', w/2)
@@ -66,7 +69,7 @@ module.exports = (data) => {
 
   // add the bars in the bar graph
   var g = svg.selectAll(".bars")
-    .data(commits)
+    .data(data)
     .enter()
       .append("g")
       for (var j = 0; j < users.length; j++) {
@@ -92,7 +95,7 @@ module.exports = (data) => {
     // add text labels for # of commits (when greater than 0)
     svg.append('g')
       .selectAll('text')
-      .data(commits)
+      .data(data)
       .enter()
         .append('text')
         .attr('x', (d, i) => xScale(users[i]) + barWidth/2 + 4)
@@ -100,8 +103,8 @@ module.exports = (data) => {
         .text((d) => d > 0 ? d.toString() : '');
 
     // display placeholder for winner graphic
-    var placeOfWinner_x = commits[0]===mostCommits ? 0 : 1;
-    var placeOfWinner_y = commits[placeOfWinner_x];
+    var placeOfWinner_x = data[0]===mostCommits ? 0 : 1;
+    var placeOfWinner_y = data[placeOfWinner_x];
 
     svg.append('text')
       .attr('x', () => xScale(users[placeOfWinner_x]) + barWidth/2 + 40)

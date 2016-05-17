@@ -5,7 +5,6 @@ const friendController = require('./../controllers/friendController.js');
 const statController = require('./../controllers/statController.js');
 const commitController = require('./../controllers/commitController.js');
 const commitStartController = require('./../controllers/commitStartController.js');
-const branchController = require('./../controllers/branchController.js');
 
 
 // the following routes start from /api/v1/users
@@ -23,10 +22,6 @@ userRouter.route('/:id/repos')
   .get(repoController.retrieveRepos)
   .post(repoController.addRepo)
   .patch(repoController.updateRepos);
-
-userRouter.route('/:id/repos/branches')
-  .get(branchController.retrieveBranches)
-  .patch(branchController.updateBranches);
 
 userRouter.route('/:id/stats')
   .get(statController.retrieveStats)
@@ -55,7 +50,6 @@ userRouter.route('/:id/successmatches')
 
 userRouter.route('/:id/successmatches2')
   .get(friendController.checkApprovedRequests2); // using
-
 
 // userRouter.route('/:id/achievements')
 //   .get(userController.retrieveAchievements)
