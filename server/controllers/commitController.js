@@ -3,6 +3,7 @@ const db = require('../db/database.js').db;
 const pgp = require('../db/database.js').pgp;
 const token = require('../config/github.config').token;
 const rp = require('request-promise');
+const getRepoOwners = require('../helpers/getRepoOwners');
 
 // GET at '/api/v1/users/:id/commits'
 exports.retrieveCommits = function(req, res) {
@@ -23,7 +24,7 @@ exports.retrieveCommits = function(req, res) {
 exports.updateCommits = function(req, res) {
   var queryId = req.params.id;
   var dbTimestamp = pgp.as.date(new Date());
-  var repoCount = 0;
+  var repoCountUpdateCommits = 0;
   
   // ** HELPER FUNCTIONS **
   
@@ -67,9 +68,9 @@ exports.updateCommits = function(req, res) {
         return t.batch(queries);
       }) 
       .then(data => {
-        repoCount++;
+        repoCountUpdateCommits++;
         // once all commits from all repos have been added,
-        if (repoCount === totalRepos) {
+        if (repoCountUpdateCommits === totalRepos) {
           // query the database for this user's commits
           db.any('SELECT * FROM $1~ ' +
             'WHERE $2~ = $3',
@@ -96,83 +97,9 @@ exports.updateCommits = function(req, res) {
     }); 
   };            
   
-  // get the owner information for each repo
-  // this will allow us to set up the GitHub GET request
-  var getRepoOwners = callback => {
-    // get the user for this queryId
-    db.one('SELECT * from $1~ ' +
-      'WHERE $2~=$3',
-      ['users', 'id', queryId])
-      // get the repos for this user
-      .then(user => {
-        db.any('SELECT r.id, r.owner_id, r.name ' +
-          'FROM users_repos ur ' +
-          'INNER JOIN repos r ' +
-          'ON r.id = ur.repo_id ' +
-          'WHERE ur.user_id=$1',
-          [queryId])
-          // set up a GET request for each of this user's repos
-          .then(repos => {
-            var repoCount = 0;
-            var totalRepos = repos.length;
-            var ownerName = user.username;
-            var repoName = '';
-            var repoOwners = [];
-            // set up a hash of each repo's ownership info
-            repos.forEach(repo => {
-              db.oneOrNone('SELECT * FROM $1~ ' +
-                'WHERE $2~=$3',
-                ['orgs', 'id', repo.owner_id])
-                .then(org => {
-                  if (org !== null) {
-                    repoOwners.push({
-                      repoId: repo.id,
-                      repoName: repo.name,
-                      userName: user.username,
-                      userId: user.id,
-                      orgId: org.id,
-                      orgName: org.orgname,
-                      repoOwnerId: repo.owner_id
-                    });
-                  } else {
-                    repoOwners.push({
-                      repoId: repo.id,
-                      repoName: repo.name,
-                      userName: user.username,
-                      userId: user.id,
-                      orgId: null,
-                      orgName: null,
-                      repoOwnerId: repo.owner_id
-                    });
-                  }
-                })
-                .then(data => {
-                  repoCount++;
-                  if (repoCount === totalRepos) {
-                    callback(repoOwners);
-                  }
-                })  
-                .catch(error => {
-                  console.error('Error selecting orgs: ', error);
-                  res.status(500).send;
-                });
-            });
-          })  
-          .catch(error => {
-            console.error('Error selecting repos: ', error);
-            res.status(500).send;
-          });       
-      })
-      .catch(error => {
-        console.error('Error selecting user: ', error);
-        res.status(500).send;
-      });
-  };
-  
-  
   var getCommitsFromGitHub = (repoOwners) => {
     var totalRepos = repoOwners.length;
-    var repoCount = 0;
+    var repoCountGetCommits = 0;
     
     repoOwners.forEach(repoOwner => {
       var ownerName;
@@ -193,7 +120,6 @@ exports.updateCommits = function(req, res) {
         },
         json: true // Automatically parses the JSON string in the response 
       };
-      
       // invoke the GET request
       rp(options)
         .then(commits => {
@@ -215,6 +141,7 @@ exports.updateCommits = function(req, res) {
             return t.batch(queries);
           })
           .then(data => {
+            repoCountGetCommits++;
             saveCommitsAndJoins(commits, repoOwner.repoId, totalRepos, repoOwner.userId);
           })
           .catch(error => {
@@ -223,14 +150,22 @@ exports.updateCommits = function(req, res) {
           });
         })
       .catch(error => {
-        console.error('Error in GET from GitHub: ', error);
-        res.status(500).send;
+        if (error.statusCode !== 500) {
+          repoCountGetCommits++;
+          console.log('Error in getCommitsFromGitHub - repo: "' + repoOwner.repoName + '"" for user: "' + repoOwner.userName + '"" not found in GitHub');
+          if (repoCountGetCommits === totalRepos) {
+            res.status(500).send();
+          }
+        } else {
+          console.error('Error in GET from GitHub: ', error);
+          res.status(500).send;
+        }
       });
     });  
   };
   
   // CALL HELPER FUNCTIONS
   
-  getRepoOwners(getCommitsFromGitHub);
+  getRepoOwners(queryId, getCommitsFromGitHub);
   
 };
